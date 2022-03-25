@@ -1,0 +1,60 @@
+version: '3.1'
+
+services:
+
+  db:
+    image: postgres:11.1-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: example
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: wellatory
+    volumes:
+      - "welltory_data:/var/lib/postgresql/data"
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "postgres" ]
+      interval: 5s
+      timeout: 2s
+      retries: 1
+    ports:
+      - 5432:5432
+
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - 12343:6379
+    command: ["redis-server", "--requirepass", "password"]
+
+  service_a:
+    build:
+      context: .
+      dockerfile: ServiceA/Dockerfile
+    restart: always
+    environment:
+      - DB_PASSWORD=example
+      - DB_USER=example
+      - DB_DATABASE=wellatory
+      - DB_IP=db
+      - DB_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PWD=password
+      - REDIS_DB=1
+    ports:
+      - 80:80
+
+  service_b:
+    build:
+      context: .
+      dockerfile: ServiceB/Dockerfile
+    restart: always
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PWD=password
+      - REDIS_DB=1
+      - STATUS_URL=http://service_a/task_status
+
+volumes:
+  welltory_data:
